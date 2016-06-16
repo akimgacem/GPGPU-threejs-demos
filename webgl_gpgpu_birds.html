@@ -60,7 +60,7 @@
 
 			void main()	{
 
-				vec2 uv = gl_FragCoord.xy / resolution.xy;
+				vec2 uv = gl_FragCoord.xy / texturePositionResolution.xy;
 				vec4 tmpPos = texture2D( texturePosition, uv );
 				vec3 position = tmpPos.xyz;
 				vec3 velocity = texture2D( textureVelocity, uv ).xyz;
@@ -89,8 +89,8 @@
 			uniform float freedomFactor;
 			uniform vec3 predator;
 
-			const float width = resolution.x;
-			const float height = resolution.y;
+			const float width = texturePositionResolution.x;
+			const float height = texturePositionResolution.y;
 
 			const float PI = 3.141592653589793;
 			const float PI_2 = PI * 2.0;
@@ -119,7 +119,7 @@
 				zoneRadiusSquared = zoneRadius * zoneRadius;
 
 
-				vec2 uv = gl_FragCoord.xy / resolution.xy;
+				vec2 uv = gl_FragCoord.xy / texturePositionResolution.xy;
 				vec3 birdPosition, birdVelocity;
 
 				vec3 selfPosition = texture2D( texturePosition, uv ).xyz;
@@ -173,7 +173,7 @@
 				for (float y=0.0;y<height;y++) {
 					for (float x=0.0;x<width;x++) {
 
-						vec2 ref = vec2( x + 0.5, y + 0.5 ) / resolution.xy;
+						vec2 ref = vec2( x + 0.5, y + 0.5 ) / texturePositionResolution.xy;
 						birdPosition = texture2D( texturePosition, ref ).xyz;
 
 						dir = birdPosition - selfPosition;
@@ -536,16 +536,16 @@
 				positionUniforms = positionVariable.material.uniforms;
 				velocityUniforms = velocityVariable.material.uniforms;
 
-				positionUniforms.time = { type: "f", value: 0.0 };
-				positionUniforms.delta = { type: "f", value: 0.0 };
-				velocityUniforms.time = { type: "f", value: 1.0 };
-				velocityUniforms.delta = { type: "f", value: 0.0 };
-				velocityUniforms.testing = { type: "f", value: 1.0 };
-				velocityUniforms.seperationDistance = { type: "f", value: 1.0 };
-				velocityUniforms.alignmentDistance = { type: "f", value: 1.0 };
-				velocityUniforms.cohesionDistance = { type: "f", value: 1.0 };
-				velocityUniforms.freedomFactor = { type: "f", value: 1.0 };
-				velocityUniforms.predator = { type: "v3", value: new THREE.Vector3() };
+				positionUniforms.time = { value: 0.0 };
+				positionUniforms.delta = { value: 0.0 };
+				velocityUniforms.time = { value: 1.0 };
+				velocityUniforms.delta = { value: 0.0 };
+				velocityUniforms.testing = { value: 1.0 };
+				velocityUniforms.seperationDistance = { value: 1.0 };
+				velocityUniforms.alignmentDistance = { value: 1.0 };
+				velocityUniforms.cohesionDistance = { value: 1.0 };
+				velocityUniforms.freedomFactor = { value: 1.0 };
+				velocityUniforms.predator = { value: new THREE.Vector3() };
 				velocityVariable.material.defines.BOUNDS = BOUNDS.toFixed( 2 );
 
 				velocityVariable.wrapS = THREE.RepeatWrapping;
@@ -566,11 +566,11 @@
 
 				// For Vertex and Fragment
 				birdUniforms = {
-					color: { type: "c", value: new THREE.Color( 0xff2200 ) },
-					texturePosition: { type: "t", value: null },
-					textureVelocity: { type: "t", value: null },
-					time: { type: "f", value: 1.0 },
-					delta: { type: "f", value: 0.0 }
+					color: { value: new THREE.Color( 0xff2200 ) },
+					texturePosition: { value: null },
+					textureVelocity: { value: null },
+					time: { value: 1.0 },
+					delta: { value: 0.0 }
 				};
 
 				// ShaderMaterial
