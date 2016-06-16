@@ -57,11 +57,11 @@
 			uniform float viscosityConstant;
 
 			#define deltaTime ( 1.0 / 60.0 )
-			#define GRAVITY_CONSTANT ( resolution.x * deltaTime * 3.0 )
+			#define GRAVITY_CONSTANT ( heightmapResolution.x * deltaTime * 3.0 )
 
 			void main()	{
 
-				vec2 cellSize = 1.0 / resolution.xy;
+				vec2 cellSize = 1.0 / heightmapResolution.xy;
 
 				vec2 uv = gl_FragCoord.xy * cellSize;
 
@@ -104,7 +104,7 @@
 
 			void main()	{
 
-				vec2 cellSize = 1.0 / resolution.xy;
+				vec2 cellSize = 1.0 / textureResolution.xy;
 
 				vec2 uv = gl_FragCoord.xy * cellSize;
 
@@ -341,8 +341,8 @@
 				var material = new THREE.ShaderMaterial( {
 					uniforms: THREE.UniformsUtils.merge( [
 						THREE.ShaderLib[ 'phong' ].uniforms,
-					    	{
-							heightmap: { type: "t", value: null },
+					    {
+							heightmap: { value: null },
 						}
 					] ),
 					vertexShader: document.getElementById( 'waterVertexShader' ).textContent,
@@ -397,9 +397,9 @@
 
 				gpuCompute.setVariableDependencies( heightmapVariable, [ heightmapVariable ] );
 
-				heightmapVariable.material.uniforms.mousePos = { type: "v2", value: new THREE.Vector2( 10000, 10000 ) };
-				heightmapVariable.material.uniforms.mouseSize = { type: "f", value: 20.0 };
-				heightmapVariable.material.uniforms.viscosityConstant = { type: "f", value: 0.03 };
+				heightmapVariable.material.uniforms.mousePos = { value: new THREE.Vector2( 10000, 10000 ) };
+				heightmapVariable.material.uniforms.mouseSize = { value: 20.0 };
+				heightmapVariable.material.uniforms.viscosityConstant = { value: 0.03 };
 				heightmapVariable.material.defines.BOUNDS = BOUNDS.toFixed( 1 );
 
 				var error = gpuCompute.init();
@@ -408,7 +408,8 @@
 				}
 
 				// Create compute shader to smooth the water surface and velocity
-				smoothShader = gpuCompute.createShaderMaterial( document.getElementById( 'smoothFragmentShader' ).textContent, { texture: { type: "t", value: null } } );
+				smoothShader = gpuCompute.createShaderMaterial( document.getElementById( 'smoothFragmentShader' ).textContent, { texture: { value: null } } );
+				smoothShader.defines.textureResolution = 'vec2( ' + WIDTH.toFixed( 1 ) + ', ' + WIDTH.toFixed( 1 ) + " )";
 
 			}
 
@@ -437,7 +438,7 @@
 						var x = i * 128 / WIDTH;
 						var y = j * 128 / WIDTH;
 
-					        pixels[ p + 0 ] = noise( x, y, 0 );
+					        pixels[ p + 0 ] = noise( x, y, 1234.5 );
 						pixels[ p + 1 ] = 0;
 						pixels[ p + 2 ] = 0;
 						pixels[ p + 3 ] = 1;
