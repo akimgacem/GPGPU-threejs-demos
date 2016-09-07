@@ -60,7 +60,7 @@
 
 			void main()	{
 
-				vec2 uv = gl_FragCoord.xy / texturePositionResolution.xy;
+				vec2 uv = gl_FragCoord.xy / resolution.xy;
 				vec4 tmpPos = texture2D( texturePosition, uv );
 				vec3 position = tmpPos.xyz;
 				vec3 velocity = texture2D( textureVelocity, uv ).xyz;
@@ -89,8 +89,8 @@
 			uniform float freedomFactor;
 			uniform vec3 predator;
 
-			const float width = texturePositionResolution.x;
-			const float height = texturePositionResolution.y;
+			const float width = resolution.x;
+			const float height = resolution.y;
 
 			const float PI = 3.141592653589793;
 			const float PI_2 = PI * 2.0;
@@ -108,10 +108,10 @@
 			const float SPEED_LIMIT = 9.0;
 
 			float rand(vec2 co){
-			    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+				return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 			}
 
-			void main()	{
+			void main() {
 
 				zoneRadius = seperationDistance + alignmentDistance + cohesionDistance;
 				separationThresh = seperationDistance / zoneRadius;
@@ -119,7 +119,7 @@
 				zoneRadiusSquared = zoneRadius * zoneRadius;
 
 
-				vec2 uv = gl_FragCoord.xy / texturePositionResolution.xy;
+				vec2 uv = gl_FragCoord.xy / resolution.xy;
 				vec3 birdPosition, birdVelocity;
 
 				vec3 selfPosition = texture2D( texturePosition, uv ).xyz;
@@ -173,7 +173,7 @@
 				for (float y=0.0;y<height;y++) {
 					for (float x=0.0;x<width;x++) {
 
-						vec2 ref = vec2( x + 0.5, y + 0.5 ) / texturePositionResolution.xy;
+						vec2 ref = vec2( x + 0.5, y + 0.5 ) / resolution.xy;
 						birdPosition = texture2D( texturePosition, ref ).xyz;
 
 						dir = birdPosition - selfPosition;

@@ -18,8 +18,11 @@
  * Variable names should be valid identifiers and should not collide with THREE GLSL used identifiers.
  * a common approach could be to use 'texture' prefixing the variable name; i.e texturePosition, textureVelocity...
  *
- * The size of the computation (sizeX * sizeY) is defined as 'resolution' automatically in the shader. For example:
- * #DEFINE resolution vec2( 1024.0, 1024.0 )
+ * Each variable can have different size (resolution) than the default size given in the GPUComputationRenderer constructor.
+ * To do that, modify the sizeX and sizeY members of the variable just after adding it.
+ * 
+ * The size of each texture (sizeX, sizeY) is defined as [variable name] + 'Resolution' automatically in the shader. For example:
+ * #DEFINE texturePositionResolution vec2( 1024.0, 1024.0 )
  *
  * -------------
  *
@@ -92,8 +95,8 @@
  * 
  *
  *
- * @param {int} sizeX Computation problem size is always 2d: sizeX * sizeY elements.
- * @param {int} sizeY Computation problem size is always 2d: sizeX * sizeY elements.
+ * @param {int} sizeX Default computation problem size (texture resolution) for variables
+ * @param {int} sizeY Default computation problem size (texture resolution) for variables
  * @param {WebGLRenderer} renderer The renderer
   */
 
@@ -103,15 +106,14 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 
 	this.currentTextureIndex = 0;
 
-	this.defaultTextureType = THREE.FloatType;
-
 	var scene = new THREE.Scene();
 
 	var camera = new THREE.Camera();
 	camera.position.z = 1;
 
 	var passThruUniforms = {
-		texture: { value: null }
+		texture: { value: null },
+		textureResolution: { value: new THREE.Vector2() }
 	};
 
 	var passThruShader = createShaderMaterial( getPassThroughFragmentShader(), passThruUniforms );
@@ -133,7 +135,9 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 			wrapS: null,
 			wrapT: null,
 			minFilter: THREE.NearestFilter,
-			magFilter: THREE.NearestFilter
+			magFilter: THREE.NearestFilter,
+			sizeX: sizeX,
+			sizeY: sizeY
 		};
 
 		this.variables.push( variable );
@@ -163,21 +167,15 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 		}
 
 		// Check for THREE.FloatType in render targets. If not found, switch to THREE.HalfFloatType
-		if ( ! this.testFloatRenderTarget() ) {
 
-			console.log( "FloatType not supported for render targets, switching to HalfFloatType." );
-
-			this.defaultTextureType = THREE.HalfFloatType;
-
-		}
 
 		for ( var i = 0; i < this.variables.length; i++ ) {
 
 			var variable = this.variables[ i ];
 
 			// Creates rendertargets and initialize them with input texture
-			variable.renderTargets[ 0 ] = this.createRenderTarget( sizeX, sizeY, variable.wrapS, variable.wrapT, variable.minFilter, variable.magFilter );
-			variable.renderTargets[ 1 ] = this.createRenderTarget( sizeX, sizeY, variable.wrapS, variable.wrapT, variable.minFilter, variable.magFilter );
+			variable.renderTargets[ 0 ] = this.createRenderTarget( variable.wrapS, variable.wrapT, variable.sizeX, variable.sizeY, variable.minFilter, variable.magFilter );
+			variable.renderTargets[ 1 ] = this.createRenderTarget( variable.wrapS, variable.wrapT, variable.sizeX, variable.sizeY, variable.minFilter, variable.magFilter );
 			this.renderTexture( variable.initialValueTexture, variable.renderTargets[ 0 ] );
 			this.renderTexture( variable.initialValueTexture, variable.renderTargets[ 1 ] );
 
@@ -202,18 +200,24 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 							}
 
 						}
+						
 						if ( ! found ) {
 							return "Variable dependency not found. Variable=" + variable.name + ", dependency=" + depVar.name;
 						}
 
 					}
 
+					// Texture sampler uniform
 					uniforms[ depVar.name ] = { value: null };
-
 					material.fragmentShader = "\nuniform sampler2D " + depVar.name + ";\n" + material.fragmentShader;
 
+					// Resolution define
+					material.defines[ depVar.name + 'Resolution' ] = 'vec2( ' + depVar.sizeX.toFixed( 1 ) + ', ' + depVar.sizeY.toFixed( 1 ) + " )";
+
 				}
+
 			}
+
 		}
 
 		this.currentTextureIndex = 0;
@@ -227,7 +231,7 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 		var currentTextureIndex = this.currentTextureIndex;
 		var nextTextureIndex = this.currentTextureIndex === 0 ? 1 : 0;
 
-		for ( var i = 0, il = this.variables.length; i < il; i++ ) {
+		for ( var i = 0; i < this.variables.length; i++ ) {
 
 			var variable = this.variables[ i ];
 
@@ -235,6 +239,7 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 			if ( variable.dependencies !== null ) {
 
 				var uniforms = variable.material.uniforms;
+
 				for ( var d = 0, dl = variable.dependencies.length; d < dl; d++ ) {
 
 					var depVar = variable.dependencies[ d ];
@@ -265,13 +270,6 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 
 	};
 
-	function addResolutionDefine( materialShader ) {
-
-		materialShader.defines.resolution = 'vec2( ' + sizeX.toFixed( 1 ) + ', ' + sizeY.toFixed( 1 ) + " )";
-
-	};
-	this.addResolutionDefine = addResolutionDefine;
-
 
 	// The following functions can be used to compute things manually
 
@@ -285,32 +283,27 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 			fragmentShader: computeFragmentShader
 		} );
 
-		addResolutionDefine( material );
-
 		return material;
 	};
 	this.createShaderMaterial = createShaderMaterial;
 
-	this.createRenderTarget = function( sizeXTexture, sizeYTexture, wrapS, wrapT, minFilter, magFilter, textureType ) {
+	this.createRenderTarget = function( wrapS, wrapT, sizeXTexture, sizeYTexture, minFilter, magFilter ) {
+		
+		wrapS = wrapS || THREE.ClampToEdgeWrapping;
+		wrapT = wrapT || THREE.ClampToEdgeWrapping;
 
 		sizeXTexture = sizeXTexture || sizeX;
 		sizeYTexture = sizeYTexture || sizeY;
 
-		wrapS = wrapS || THREE.ClampToEdgeWrapping;
-		wrapT = wrapT || THREE.ClampToEdgeWrapping;
-
-		minFilter = minFilter || THREE.NearestFilter;
-		magFilter = magFilter || THREE.NearestFilter;
-
-		textureType = textureType || this.defaultTextureType;
-
 		var renderTarget = new THREE.WebGLRenderTarget( sizeXTexture, sizeYTexture, {
 			wrapS: wrapS,
 			wrapT: wrapT,
+			//minFilter: THREE.NearestFilter,
+			//magFilter: THREE.NearestFilter,
 			minFilter: minFilter,
 			magFilter: magFilter,
 			format: THREE.RGBAFormat,
-			type: textureType,
+			type: THREE.FloatType,
 			stencilBuffer: false
 		} );
 
@@ -324,7 +317,7 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 		sizeYTexture = sizeYTexture || sizeY;
 
 		var a = new Float32Array( sizeXTexture * sizeYTexture * 4 );
-		var texture = new THREE.DataTexture( a, sizeX, sizeY, THREE.RGBAFormat, THREE.FloatType );
+		var texture = new THREE.DataTexture( a, sizeXTexture, sizeYTexture, THREE.RGBAFormat, THREE.FloatType );
 		texture.needsUpdate = true;
 
 		return texture;
@@ -339,6 +332,7 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 		// output = RenderTarget
 
 		passThruUniforms.texture.value = input;
+		passThruUniforms.textureResolution.value.set( input.image.width, input.image.height );
 
 		this.doRenderTarget( passThruShader, output);
 
@@ -351,24 +345,6 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 		mesh.material = material;
 		renderer.render( scene, camera, output );
 		mesh.material = passThruShader;
-
-	};
-
-	this.testFloatRenderTarget = function() {
-
-		// Tests if rendering to float render targets is available
-
-		var renderTarget = this.createRenderTarget( 16, 16, undefined, undefined, undefined, undefined, THREE.FloatType );
-		this.renderTexture( null, renderTarget );
-		var gl = renderer.context;
-		var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-		if ( status !== gl.FRAMEBUFFER_COMPLETE ) {
-
-			return false;
-
-		}
-
-		return true;
 
 	};
 
@@ -387,10 +363,11 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 	function getPassThroughFragmentShader() {
 
 		return	"uniform sampler2D texture;\n" +
+				"uniform vec2 textureResolution;\n" +
 				"\n" +
 				"void main() {\n" +
 				"\n" +
-				"	vec2 uv = gl_FragCoord.xy / resolution.xy;\n" +
+				"	vec2 uv = gl_FragCoord.xy / textureResolution.xy;\n" +
 				"\n" +
 				"	gl_FragColor = texture2D( texture, uv );\n" +
 				"\n" +
