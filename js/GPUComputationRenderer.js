@@ -361,7 +361,8 @@ function GPUComputationRenderer( sizeX, sizeY, renderer ) {
 		var renderTarget = this.createRenderTarget( 16, 16, undefined, undefined, undefined, undefined, THREE.FloatType );
 		this.renderTexture( null, renderTarget );
 		var gl = renderer.context;
-		var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+		var status = gl.checkFramebufferStatus( gl.FRAMEBUFFER );
+		renderTarget.dispose();
 		if ( status !== gl.FRAMEBUFFER_COMPLETE ) {
 
 			return false;
